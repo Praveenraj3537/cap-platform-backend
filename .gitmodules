@@ -1,0 +1,12 @@
+[submodule "src/submodules/cap-platform-dtos"]
+	path = src/submodules/cap-platform-dtos
+	url = https://github.com/Praveenraj3537/cap-platform-dtos.git
+[submodule "src/submodules/cap-platform-entities"]
+	path = src/submodules/cap-platform-entities
+	url = https://github.com/Praveenraj3537/cap-platform-entities.git
+[submodule "src/submodules/cap-platform-mappers"]
+	path = src/submodules/cap-platform-mappers
+	url = https://github.com/Praveenraj3537/cap-platform-mappers.git
+[submodule "src/submodules/cap-platform-rabbitmq-back"]
+	path = src/submodules/cap-platform-rabbitmq-back
+	url = https://github.com/Praveenraj3537/cap-platform-rabbitmq-back.git
