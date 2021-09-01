@@ -4,6 +4,7 @@ import AppService from "../../submodules/cap-platform-entities/cap-platform-fram
 import { EntityBase } from "../../submodules/cap-platform-entities/cap-platform-framework/cap-platform-entitybase/entitybase";
 import { RequestModel } from "src/submodules/cap-platform-dtos/cap-platform-common/RequestModel";
 import { ResponseModel } from "src/submodules/cap-platform-dtos/cap-platform-common/ResponseModel";
+import { RequestModelQuery } from "src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery";
 
 @Injectable()
 export default class FacadeBase<TEntity extends EntityBase, TDto extends DtoBase>{
@@ -67,5 +68,19 @@ export default class FacadeBase<TEntity extends EntityBase, TDto extends DtoBase
       console.log("Ids are......", id);
       return this.appService.deleteByIds(id);
     }
+
+
+    async search(requestModel: RequestModelQuery){
+      try {
+          console.log("Inside facade ......group by pageSize & pageNumber");
+          let result = await this.appService.search(requestModel);
+          return result;
+        } catch (error) {
+          throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+  }
+
+
+    
 
 }
