@@ -5,16 +5,20 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { Tenant_UsersDto } from 'src/submodules/cap-platform-dtos/tenant_usersDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty} from '@nestjs/swagger';
 
-
+@ApiTags('Tenant Users')
 @Controller('tenant_users')
 export class Tenant_UsersRoutes{
 
   constructor(private tenant_usersFacade : Tenant_UsersFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['TENANT_USERS1_ADD','TENANT_USERS1_UPDATE','TENANT_USERS1_DELETE'];
-  private serviceName = ['TENANT_USERS1_SERVICE','TENANT_USERS1_SERVICE','TENANT_USERS1_SERVICE'];
+  private topicArray = ['TENANT_USERS_ADD','TENANT_USERS_UPDATE','TENANT_USERS_DELETE'];
+  private serviceName = ['TENANT_USERS_SERVICE','TENANT_USERS_SERVICE','TENANT_USERS_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +32,15 @@ export class Tenant_UsersRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'TENANT_USERS1_ADD':
+              case 'TENANT_USERS_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfTenant_UsersDto = await this.createTenant_Users(result["message"]);
                 break;
-              case 'TENANT_USERS1_UPDATE':
+              case 'TENANT_USERS_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfTenant_UsersDto = await this.updatetenant_users(result["message"]);
                   break;
-              case 'TENANT_USERS1_DELETE':
+              case 'TENANT_USERS_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfTenant_UsersDto = await this.deleteTenant_Users(result["message"]);
                     break;
@@ -62,7 +66,16 @@ export class Tenant_UsersRoutes{
             for (let index = 0; index < result.OnFailureTopicsToPush.length; index++) {
               const element = result.OnFailureTopicsToPush[index];
               let errorResult: ResponseModel<Tenant_UsersDto> = new ResponseModel<Tenant_UsersDto>(null,null,null,null,null,null,null,null,null);;
-              errorResult.setStatus(new Message("500",error,null))
+              errorResult.setStatus(new Message("500",error,null));
+
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
+
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
               
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
@@ -75,6 +88,7 @@ export class Tenant_UsersRoutes{
   }
 
 
+  @ApiResponseProperty()
   @Get()
   allTenant_Userss() {
     try {
@@ -85,6 +99,7 @@ export class Tenant_UsersRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createTenant_Users(@Body() body:RequestModel<Tenant_UsersDto>): Promise<ResponseModel<Tenant_UsersDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +114,7 @@ export class Tenant_UsersRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Put("/")
   async updatetenant_users(@Body() body: RequestModel<Tenant_UsersDto>): Promise<ResponseModel<Tenant_UsersDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +128,7 @@ export class Tenant_UsersRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Delete('/')
   deleteTenant_Users(@Body() body:RequestModel<Tenant_UsersDto>): Promise<ResponseModel<Tenant_UsersDto>>{
     try {
@@ -122,6 +139,7 @@ export class Tenant_UsersRoutes{
         }
   }
 
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteTenant_Usersbyid(@Param('id') id) {
     try {
@@ -132,6 +150,25 @@ export class Tenant_UsersRoutes{
         }
   }
 
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function tenatn_users:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.tenant_usersFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.tenant_usersFacade.readOne(id);

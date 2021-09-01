@@ -5,16 +5,20 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { ClientsDto } from 'src/submodules/cap-platform-dtos/clientsDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty} from '@nestjs/swagger';
 
-
+@ApiTags('Clients')
 @Controller('clients')
 export class ClientsRoutes{
 
   constructor(private clientsFacade : ClientsFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['CLIENTS1_ADD','CLIENTS1_UPDATE','CLIENTS1_DELETE'];
-  private serviceName = ['CLIENTS1_SERVICE','CLIENTS1_SERVICE','CLIENTS1_SERVICE'];
+  private topicArray = ['CLIENTS_ADD','CLIENTS_UPDATE','CLIENTS_DELETE'];
+  private serviceName = ['CLIENTS_SERVICE','CLIENTS_SERVICE','CLIENTS_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +32,15 @@ export class ClientsRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'CLIENTS1_ADD':
+              case 'CLIENTS_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfClientsDto = await this.createClients(result["message"]);
                 break;
-              case 'CLIENTS1_UPDATE':
+              case 'CLIENTS_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfClientsDto = await this.updateclients(result["message"]);
                   break;
-              case 'CLIENTS1_DELETE':
+              case 'CLIENTS_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfClientsDto = await this.deleteClients(result["message"]);
                     break;
@@ -63,6 +67,16 @@ export class ClientsRoutes{
               const element = result.OnFailureTopicsToPush[index];
               let errorResult: ResponseModel<ClientsDto> = new ResponseModel<ClientsDto>(null,null,null,null,null,null,null,null,null);;
               errorResult.setStatus(new Message("500",error,null))
+
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
+
+
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
               
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
@@ -74,7 +88,7 @@ export class ClientsRoutes{
 
   }
 
-
+  @ApiResponseProperty()
   @Get()
   allClientss() {
     try {
@@ -85,6 +99,7 @@ export class ClientsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createClients(@Body() body:RequestModel<ClientsDto>): Promise<ResponseModel<ClientsDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +114,7 @@ export class ClientsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Put("/")
   async updateclients(@Body() body: RequestModel<ClientsDto>): Promise<ResponseModel<ClientsDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +128,7 @@ export class ClientsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Delete('/')
   deleteClients(@Body() body:RequestModel<ClientsDto>): Promise<ResponseModel<ClientsDto>>{
     try {
@@ -122,6 +139,7 @@ export class ClientsRoutes{
         }
   }
 
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteClientsbyid(@Param('id') id) {
     try {
@@ -132,6 +150,25 @@ export class ClientsRoutes{
         }
   }
 
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function clients:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.clientsFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.clientsFacade.readOne(id);

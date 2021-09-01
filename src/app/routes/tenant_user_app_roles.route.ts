@@ -5,16 +5,21 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { Tenant_User_App_RolesDto } from 'src/submodules/cap-platform-dtos/tenant_user_app_rolesDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty} from '@nestjs/swagger';
 
 
+@ApiTags('Tenant User App Roles')
 @Controller('tenant_user_app_roles')
 export class Tenant_User_App_RolesRoutes{
 
   constructor(private tenant_user_app_rolesFacade : Tenant_User_App_RolesFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['TENANT_USER_APP_ROLES1_ADD','TENANT_USER_APP_ROLES1_UPDATE','TENANT_USER_APP_ROLES1_DELETE'];
-  private serviceName = ['TENANT_USER_APP_ROLES1_SERVICE','TENANT_USER_APP_ROLES1_SERVICE','TENANT_USER_APP_ROLES1_SERVICE'];
+  private topicArray = ['TENANT_USER_APP_ROLES_ADD','TENANT_USER_APP_ROLES_UPDATE','TENANT_USER_APP_ROLES_DELETE'];
+  private serviceName = ['TENANT_USER_APP_ROLES_SERVICE','TENANT_USER_APP_ROLES_SERVICE','TENANT_USER_APP_ROLES_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +33,15 @@ export class Tenant_User_App_RolesRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'TENANT_USER_APP_ROLES1_ADD':
+              case 'TENANT_USER_APP_ROLES_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfTenant_User_App_RolesDto = await this.createTenant_User_App_Roles(result["message"]);
                 break;
-              case 'TENANT_USER_APP_ROLES1_UPDATE':
+              case 'TENANT_USER_APP_ROLES_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfTenant_User_App_RolesDto = await this.updatetenant_user_app_roles(result["message"]);
                   break;
-              case 'TENANT_USER_APP_ROLES1_DELETE':
+              case 'TENANT_USER_APP_ROLES_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfTenant_User_App_RolesDto = await this.deleteTenant_User_App_Roles(result["message"]);
                     break;
@@ -62,7 +67,16 @@ export class Tenant_User_App_RolesRoutes{
             for (let index = 0; index < result.OnFailureTopicsToPush.length; index++) {
               const element = result.OnFailureTopicsToPush[index];
               let errorResult: ResponseModel<Tenant_User_App_RolesDto> = new ResponseModel<Tenant_User_App_RolesDto>(null,null,null,null,null,null,null,null,null);;
-              errorResult.setStatus(new Message("500",error,null))
+              errorResult.setStatus(new Message("500",error,null));
+
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
+
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
               
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
@@ -75,6 +89,7 @@ export class Tenant_User_App_RolesRoutes{
   }
 
 
+  @ApiResponseProperty()
   @Get()
   allTenant_User_App_Roless() {
     try {
@@ -85,6 +100,7 @@ export class Tenant_User_App_RolesRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createTenant_User_App_Roles(@Body() body:RequestModel<Tenant_User_App_RolesDto>): Promise<ResponseModel<Tenant_User_App_RolesDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +115,7 @@ export class Tenant_User_App_RolesRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Put("/")
   async updatetenant_user_app_roles(@Body() body: RequestModel<Tenant_User_App_RolesDto>): Promise<ResponseModel<Tenant_User_App_RolesDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +129,7 @@ export class Tenant_User_App_RolesRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Delete('/')
   deleteTenant_User_App_Roles(@Body() body:RequestModel<Tenant_User_App_RolesDto>): Promise<ResponseModel<Tenant_User_App_RolesDto>>{
     try {
@@ -122,6 +140,7 @@ export class Tenant_User_App_RolesRoutes{
         }
   }
 
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteTenant_User_App_Rolesbyid(@Param('id') id) {
     try {
@@ -132,6 +151,26 @@ export class Tenant_User_App_RolesRoutes{
         }
   }
 
+
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function tenant_user-app_roles:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.tenant_user_app_rolesFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.tenant_user_app_rolesFacade.readOne(id);

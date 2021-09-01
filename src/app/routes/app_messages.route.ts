@@ -5,16 +5,20 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { App_MessagesDto } from 'src/submodules/cap-platform-dtos/app_messagesDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty} from '@nestjs/swagger';
 
-
+@ApiTags('App Messages')
 @Controller('app_messages')
 export class App_MessagesRoutes{
 
   constructor(private app_messagesFacade : App_MessagesFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['APP_MESSAGES1_ADD','APP_MESSAGES1_UPDATE','APP_MESSAGES1_DELETE'];
-  private serviceName = ['APP_MESSAGES1_SERVICE','APP_MESSAGES1_SERVICE','APP_MESSAGES1_SERVICE'];
+  private topicArray = ['APP_MESSAGES_ADD','APP_MESSAGES_UPDATE','APP_MESSAGES_DELETE'];
+  private serviceName = ['APP_MESSAGES_SERVICE','APP_MESSAGES_SERVICE','APP_MESSAGES_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +32,15 @@ export class App_MessagesRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'APP_MESSAGES1_ADD':
+              case 'APP_MESSAGES_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfApp_MessagesDto = await this.createApp_Messages(result["message"]);
                 break;
-              case 'APP_MESSAGES1_UPDATE':
+              case 'APP_MESSAGES_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfApp_MessagesDto = await this.updateapp_messages(result["message"]);
                   break;
-              case 'APP_MESSAGES1_DELETE':
+              case 'APP_MESSAGES_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfApp_MessagesDto = await this.deleteApp_Messages(result["message"]);
                     break;
@@ -62,7 +66,14 @@ export class App_MessagesRoutes{
             for (let index = 0; index < result.OnFailureTopicsToPush.length; index++) {
               const element = result.OnFailureTopicsToPush[index];
               let errorResult: ResponseModel<App_MessagesDto> = new ResponseModel<App_MessagesDto>(null,null,null,null,null,null,null,null,null);;
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
               errorResult.setStatus(new Message("500",error,null))
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
               
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
@@ -75,6 +86,7 @@ export class App_MessagesRoutes{
   }
 
 
+  @ApiResponseProperty()
   @Get()
   allApp_Messagess() {
     try {
@@ -85,6 +97,7 @@ export class App_MessagesRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createApp_Messages(@Body() body:RequestModel<App_MessagesDto>): Promise<ResponseModel<App_MessagesDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +112,8 @@ export class App_MessagesRoutes{
     }
   }
 
+
+  @ApiResponseProperty()
   @Put("/")
   async updateapp_messages(@Body() body: RequestModel<App_MessagesDto>): Promise<ResponseModel<App_MessagesDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +127,8 @@ export class App_MessagesRoutes{
     }
   }
 
+
+  @ApiResponseProperty()
   @Delete('/')
   deleteApp_Messages(@Body() body:RequestModel<App_MessagesDto>): Promise<ResponseModel<App_MessagesDto>>{
     try {
@@ -122,6 +139,8 @@ export class App_MessagesRoutes{
         }
   }
 
+
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteApp_Messagesbyid(@Param('id') id) {
     try {
@@ -132,6 +151,28 @@ export class App_MessagesRoutes{
         }
   }
 
+
+
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function app_messages:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.app_messagesFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.app_messagesFacade.readOne(id);

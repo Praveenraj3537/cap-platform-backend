@@ -5,16 +5,19 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty} from '@nestjs/swagger';
 
-
+@ApiTags('App Roles')
 @Controller('app_roles')
 export class App_RolesRoutes{
 
   constructor(private app_rolesFacade : App_RolesFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['APP_ROLES1_ADD','APP_ROLES1_UPDATE','APP_ROLES1_DELETE'];
-  private serviceName = ['APP_ROLES1_SERVICE','APP_ROLES1_SERVICE','APP_ROLES1_SERVICE'];
+  private topicArray = ['APP_ROLES_ADD','APP_ROLES_UPDATE','APP_ROLES_DELETE'];
+  private serviceName = ['APP_ROLES_SERVICE','APP_ROLES_SERVICE','APP_ROLES_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +31,15 @@ export class App_RolesRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'APP_ROLES1_ADD':
+              case 'APP_ROLES_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfApp_RolesDto = await this.createApp_Roles(result["message"]);
                 break;
-              case 'APP_ROLES1_UPDATE':
+              case 'APP_ROLES_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfApp_RolesDto = await this.updateapp_roles(result["message"]);
                   break;
-              case 'APP_ROLES1_DELETE':
+              case 'APP_ROLES_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfApp_RolesDto = await this.deleteApp_Roles(result["message"]);
                     break;
@@ -61,9 +64,17 @@ export class App_RolesRoutes{
             console.log(error, result);
             for (let index = 0; index < result.OnFailureTopicsToPush.length; index++) {
               const element = result.OnFailureTopicsToPush[index];
-              let errorResult: ResponseModel<App_RolesDto> = new ResponseModel<App_RolesDto>(null,null,null,null,null,null,null,null,null);;
+              let errorResult: ResponseModel<App_RolesDto> = new ResponseModel<App_RolesDto>(null,null,null,null,null,null,null,null,null);
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
+
               errorResult.setStatus(new Message("500",error,null))
-              
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
+                          
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
             }
@@ -75,6 +86,7 @@ export class App_RolesRoutes{
   }
 
 
+  @ApiResponseProperty()
   @Get()
   allApp_Roless() {
     try {
@@ -85,6 +97,7 @@ export class App_RolesRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createApp_Roles(@Body() body:RequestModel<App_RolesDto>): Promise<ResponseModel<App_RolesDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +112,8 @@ export class App_RolesRoutes{
     }
   }
 
+
+  @ApiResponseProperty()
   @Put("/")
   async updateapp_roles(@Body() body: RequestModel<App_RolesDto>): Promise<ResponseModel<App_RolesDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +127,7 @@ export class App_RolesRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Delete('/')
   deleteApp_Roles(@Body() body:RequestModel<App_RolesDto>): Promise<ResponseModel<App_RolesDto>>{
     try {
@@ -122,6 +138,7 @@ export class App_RolesRoutes{
         }
   }
 
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteApp_Rolesbyid(@Param('id') id) {
     try {
@@ -132,6 +149,26 @@ export class App_RolesRoutes{
         }
   }
 
+
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function app_roles:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.app_rolesFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.app_rolesFacade.readOne(id);

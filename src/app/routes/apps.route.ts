@@ -5,16 +5,20 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { AppsDto } from 'src/submodules/cap-platform-dtos/appsDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty } from '@nestjs/swagger';
 
-
+@ApiTags('Apps')
 @Controller('apps')
 export class AppsRoutes{
 
   constructor(private appsFacade : AppsFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['APPS1_ADD','APPS1_UPDATE','APPS1_DELETE'];
-  private serviceName = ['APPS1_SERVICE','APPS1_SERVICE','APPS1_SERVICE'];
+  private topicArray = ['APPS_ADD','APPS_UPDATE','APPS_DELETE'];
+  private serviceName = ['APPS_SERVICE','APPS_SERVICE','APPS_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +32,15 @@ export class AppsRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'APPS1_ADD':
+              case 'APPS_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfAppsDto = await this.createApps(result["message"]);
                 break;
-              case 'APPS1_UPDATE':
+              case 'APPS_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfAppsDto = await this.updateapps(result["message"]);
                   break;
-              case 'APPS1_DELETE':
+              case 'APPS_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfAppsDto = await this.deleteApps(result["message"]);
                     break;
@@ -63,6 +67,16 @@ export class AppsRoutes{
               const element = result.OnFailureTopicsToPush[index];
               let errorResult: ResponseModel<AppsDto> = new ResponseModel<AppsDto>(null,null,null,null,null,null,null,null,null);;
               errorResult.setStatus(new Message("500",error,null))
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
+
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
+
+
               
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
@@ -75,6 +89,7 @@ export class AppsRoutes{
   }
 
 
+  @ApiResponseProperty()
   @Get()
   allAppss() {
     try {
@@ -85,6 +100,7 @@ export class AppsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createApps(@Body() body:RequestModel<AppsDto>): Promise<ResponseModel<AppsDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +115,7 @@ export class AppsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Put("/")
   async updateapps(@Body() body: RequestModel<AppsDto>): Promise<ResponseModel<AppsDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +129,7 @@ export class AppsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Delete('/')
   deleteApps(@Body() body:RequestModel<AppsDto>): Promise<ResponseModel<AppsDto>>{
     try {
@@ -122,6 +140,7 @@ export class AppsRoutes{
         }
   }
 
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteAppsbyid(@Param('id') id) {
     try {
@@ -132,6 +151,27 @@ export class AppsRoutes{
         }
   }
 
+
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function apps:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.appsFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.appsFacade.readOne(id);

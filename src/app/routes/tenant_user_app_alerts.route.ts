@@ -5,16 +5,20 @@ import { SNS_SQS } from 'src/submodules/cap-platform-rabbitmq-back/SNS_SQS';
 import { Tenant_User_App_AlertsDto } from 'src/submodules/cap-platform-dtos/tenant_user_app_alertsDto';
 import { RequestModel } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModel';
 import { Message } from 'src/submodules/cap-platform-dtos/cap-platform-common/Message';
+import { App_RolesDto } from 'src/submodules/cap-platform-dtos/app_rolesDto';
+import { Request } from 'express';
+import { RequestModelQuery } from 'src/submodules/cap-platform-dtos/cap-platform-common/RequestModelQuery';
+import { ApiTags, ApiResponseProperty} from '@nestjs/swagger';
 
-
+@ApiTags('Tenant User App Alerts')
 @Controller('tenant_user_app_alerts')
 export class Tenant_User_App_AlertsRoutes{
 
   constructor(private tenant_user_app_alertsFacade : Tenant_User_App_AlertsFacade) { }
 
   private sns_sqs = SNS_SQS.getInstance();
-  private topicArray = ['TENANT_UER_APP_ALERTS1_ADD','TENANT_UER_APP_ALERTS1_UPDATE','TENANT_UER_APP_ALERTS1_DELETE'];
-  private serviceName = ['TENANT_UER_APP_ALERTS1_SERVICE','TENANT_UER_APP_ALERTS1_SERVICE','TENANT_UER_APP_ALERTS1_SERVICE'];
+  private topicArray = ['TENANT_USER_APP_ALERTS_ADD','TENANT_USER_APP_ALERTS_UPDATE','TENANT_USER_APP_ALERTS_DELETE'];
+  private serviceName = ['TENANT_USER_APP_ALERTS_SERVICE','TENANT_USER_APP_ALERTS_SERVICE','TENANT_USER_APP_ALERTS_SERVICE'];
   
   onModuleInit() {
    
@@ -28,15 +32,15 @@ export class Tenant_User_App_AlertsRoutes{
             console.log(`listening to  ${value} topic.....result is....`);
             // ToDo :- add a method for removing queue message from queue....
             switch (value) {
-              case 'TENANT_UER_APP_ALERTS1_ADD':
+              case 'TENANT_USER_APP_ALERTS_ADD':
                 console.log("Inside PRODUCT_ADD Topic");
                 responseModelOfTenant_User_App_AlertsDto = await this.createTenant_User_App_Alerts(result["message"]);
                 break;
-              case 'TENANT_UER_APP_ALERTS1_UPDATE':
+              case 'TENANT_USER_APP_ALERTS_UPDATE':
                   console.log("Inside PRODUCT_UPDATE Topic");
                   responseModelOfTenant_User_App_AlertsDto = await this.updatetenant_user_app_alerts(result["message"]);
                   break;
-              case 'TENANT_UER_APP_ALERTS1_DELETE':
+              case 'TENANT_USER_APP_ALERTS_DELETE':
                     console.log("Inside PRODUCT_DELETE Topic");
                     responseModelOfTenant_User_App_AlertsDto = await this.deleteTenant_User_App_Alerts(result["message"]);
                     break;
@@ -63,6 +67,14 @@ export class Tenant_User_App_AlertsRoutes{
               const element = result.OnFailureTopicsToPush[index];
               let errorResult: ResponseModel<Tenant_User_App_AlertsDto> = new ResponseModel<Tenant_User_App_AlertsDto>(null,null,null,null,null,null,null,null,null);;
               errorResult.setStatus(new Message("500",error,null))
+
+              let requestModelOfApp_RolesDto: RequestModel<App_RolesDto> = result["message"];
+
+              errorResult.setSocketId(requestModelOfApp_RolesDto.SocketId);
+              errorResult.setCommunityUrl(requestModelOfApp_RolesDto.CommunityUrl);
+              errorResult.setRequestId(requestModelOfApp_RolesDto.RequestGuid);
+              console.log("Socket is Inside catch:...", requestModelOfApp_RolesDto.SocketId);
+              console.log(errorResult);
               
 
               this.sns_sqs.publishMessageToTopic(element, errorResult);
@@ -75,6 +87,7 @@ export class Tenant_User_App_AlertsRoutes{
   }
 
 
+  @ApiResponseProperty()
   @Get()
   allTenant_User_App_Alertss() {
     try {
@@ -85,6 +98,7 @@ export class Tenant_User_App_AlertsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Post("/") 
   async createTenant_User_App_Alerts(@Body() body:RequestModel<Tenant_User_App_AlertsDto>): Promise<ResponseModel<Tenant_User_App_AlertsDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -99,6 +113,7 @@ export class Tenant_User_App_AlertsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Put("/")
   async updatetenant_user_app_alerts(@Body() body: RequestModel<Tenant_User_App_AlertsDto>): Promise<ResponseModel<Tenant_User_App_AlertsDto>> {  //requiestmodel<STUDENTDto></STUDENTDto>....Promise<ResponseModel<Grou[pDto>>]
     try {
@@ -112,6 +127,7 @@ export class Tenant_User_App_AlertsRoutes{
     }
   }
 
+  @ApiResponseProperty()
   @Delete('/')
   deleteTenant_User_App_Alerts(@Body() body:RequestModel<Tenant_User_App_AlertsDto>): Promise<ResponseModel<Tenant_User_App_AlertsDto>>{
     try {
@@ -122,6 +138,7 @@ export class Tenant_User_App_AlertsRoutes{
         }
   }
 
+  @ApiResponseProperty()
   @Delete('/:id')
   deleteTenant_User_App_Alertsbyid(@Param('id') id) {
     try {
@@ -132,6 +149,25 @@ export class Tenant_User_App_AlertsRoutes{
         }
   }
 
+  @ApiResponseProperty()
+  @Get('/search')
+  async search(@Req() request:Request){
+    try{
+      console.log("Inside search function tenant_user_app:route");
+      let requestmodelquery: RequestModelQuery = JSON.parse(request.headers['requestmodel'].toString());
+
+      console.log(JSON.stringify(requestmodelquery));
+      console.log(JSON.stringify(requestmodelquery.Filter));
+
+      return this.tenant_user_app_alertsFacade.search(requestmodelquery);
+    }
+    catch(error)
+    {
+      throw new HttpException(error, HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+  @ApiResponseProperty()
   @Get('/:id')
   readOne(@Param('id') id) {
     return this.tenant_user_app_alertsFacade.readOne(id);
