@@ -1,4 +1,5 @@
 import { ConnectionOptions } from 'typeorm';
+// import {  DotenvConfigOutput,config } from "dotenv";
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -10,7 +11,7 @@ const config: ConnectionOptions = {
     password: "db123",
     database: 'PLATFORM',
     entities: [__dirname+ '/**/**.entity{.ts,.js}'],
-    synchronize: true,
+    synchronize: false,
     migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
     cli: {
         // Location of migration should be inside src folder
